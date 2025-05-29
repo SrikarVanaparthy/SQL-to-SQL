@@ -20,7 +20,7 @@ WHERE sp.name NOT LIKE '##%' AND sp.name NOT LIKE 'NT AUTHORITY%' AND sp.name NO
 "@
 
 # Run query on source and save output
-$createLoginScripts = & sqlcmd -S $sourceInstance -U $SqlUsername -P $SqlPassword -Q $loginsQuery -h -1 -W | Where-Object { $_ -and $_ -notmatch 'rows affected' }
+$createLoginScripts = & "/opt/mssql-tools/bin/sqlcmd" -S $sourceInstance -U $SqlUsername -P $SqlPassword -Q $loginsQuery -h -1 -W | Where-Object { $_ -and $_ -notmatch 'rows affected' }
 
 # Apply scripts to target
 foreach ($script in $createLoginScripts) {
