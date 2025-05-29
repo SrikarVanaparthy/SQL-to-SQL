@@ -1,33 +1,28 @@
 param (
     [string]$SourceSQLHost,
-    [string]$TargetSQLHost1,   # just one target now per run
+    [string]$TargetSQLHost1,
     [string]$SqlUsername,
     [string]$SqlPassword,
     [string]$InstanceName1,
     [string]$InstanceName2
 )
 
-Import-Module SqlServer
-$securePassword = ConvertTo-SecureString $SqlPassword -AsPlainText -Force
+$sourceInstance = if ($InstanceName1 -ne '') { "$SourceSQLHost\\$InstanceName1" } else { $SourceSQLHost }
+$targetInstance = if ($InstanceName2 -ne '') { "$TargetSQLHost1\\$InstanceName2" } else { $TargetSQLHost1 }
 
-$sourceInstance = if ($InstanceName1 -ne '') { "$SourceSQLHost\$InstanceName1" } else { $SourceSQLHost }
-$targetInstance = if ($InstanceName2 -ne '') { "$TargetSQLHost1\$InstanceName2" } else { $TargetSQLHost1 }
+# Get non-system logins from source
+$loginsQuery = @"
+SELECT 'CREATE LOGIN [' + sp.name + '] WITH PASSWORD = ' + 
+       CONVERT(VARCHAR(MAX), sl.password_hash, 1) + ', CHECK_POLICY = OFF;' AS CreateScript
+FROM sys.sql_logins sl
+JOIN sys.server_principals sp ON sl.principal_id = sp.principal_id
+WHERE sp.name NOT LIKE '##%' AND sp.name NOT LIKE 'NT AUTHORITY%' AND sp.name NOT LIKE 'NT SERVICE%'
+"@
 
-$source = New-Object Microsoft.SqlServer.Management.Smo.Server $sourceInstance
-$source.ConnectionContext.LoginSecure = $false
-$source.ConnectionContext.set_Login($SqlUsername)
-$source.ConnectionContext.set_SecurePassword($securePassword)
+# Run query on source and save output
+$createLoginScripts = & sqlcmd -S $sourceInstance -U $SqlUsername -P $SqlPassword -Q $loginsQuery -h -1 -W | Where-Object { $_ -and $_ -notmatch 'rows affected' }
 
-$target = New-Object Microsoft.SqlServer.Management.Smo.Server $targetInstance
-$target.ConnectionContext.LoginSecure = $false
-$target.ConnectionContext.set_Login($SqlUsername)
-$target.ConnectionContext.set_SecurePassword($securePassword)
-
-$logins = $source.Logins | Where-Object { -not $_.IsSystemObject }
-
-foreach ($login in $logins) {
-    if (-not $target.Logins.Contains($login.Name)) {
-        $createScript = $login.Script() -join "`n"
-        Invoke-Sqlcmd -ServerInstance $targetInstance -Username $SqlUsername -Password $SqlPassword -Query $createScript
-    }
+# Apply scripts to target
+foreach ($script in $createLoginScripts) {
+    & sqlcmd -S $targetInstance -U $SqlUsername -P $SqlPassword -Q $script
 }
