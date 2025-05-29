@@ -9,7 +9,7 @@ pipeline {
         password(name: 'SqlPassword', defaultValue: 'Password@123', description: 'SQL Server Password')
         string(name: 'InstanceName1', defaultValue: '34.71.151.139,1433', description: 'Source instance name')
         string(name: 'InstanceName2', defaultValue: '34.9.117.49,1433', description: 'Target 1 instance name')
-        string(name: 'InstanceName3', defaultValue: '34.11.117.99,1433', description: 'Target 2 instance name')
+        string(name: 'InstanceName3', defaultValue: '34.123.106.1,1433', description: 'Target 2 instance name')
     }
 
     stages {
