@@ -24,5 +24,5 @@ $createLoginScripts = & "/opt/mssql-tools/bin/sqlcmd" -S $sourceInstance -U $Sql
 
 # Apply scripts to target
 foreach ($script in $createLoginScripts) {
-    & sqlcmd -S $targetInstance -U $SqlUsername -P $SqlPassword -Q $script
+    & "/opt/mssql-tools/bin/sqlcmd" -S $targetInstance -U $SqlUsername -P $SqlPassword -Q $script
 }
